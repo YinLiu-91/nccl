@@ -151,10 +151,48 @@ int main(int argc, char *argv[]) {
     // initializing NCCL
     NCCLCHECK(ncclCommInitRank(&comm, nRanks, id, myRank));
 
-    // communicating using NCCL
-    NCCLCHECK(ncclAllReduce((const void *) sendbuff, (void *) recvbuff,
-                            size, ncclFloat, ncclSum,
-                            comm, s));
+    // after send and recv ,recvbuff will be have the same value with send buff
+    
+    //================case1: mustbe dead lock=========================
+    // wrong case1, it will make a dead lock
+    // if (myRank == 0)
+    // {
+    //     NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 1, comm, s));
+    //     NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 1, comm, s));
+    // }
+    // else if (myRank == 1)
+    // {
+    //     NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 0, comm, s));
+    //     NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 0, comm, s));
+    // }
+
+    //================case2: maybe dead lock=========================
+    // wrong case1, it maybe make a dead lock,but it will work well mostly if thre evolope is not full
+    // if (myRank == 0)
+    // {
+    //     NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 1, comm, s));
+    //     NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 1, comm, s));
+    // }
+    // else if (myRank == 1)
+    // {
+    //     NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 0, comm, s));
+    //     NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 0, comm, s));
+    // }
+
+    //================case3:  good case =========================
+    //
+    if (myRank == 0)
+    {
+        NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 1, comm, s));
+        NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 1, comm, s));
+
+    }
+    else if (myRank == 1)
+    {
+        NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 0, comm, s));
+        NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 0, comm, s));
+    }
+
 
     cudaMemcpy(hptr,recvbuff,size*sizeof(float),cudaMemcpyDeviceToHost);
     for(int i=0;i<size;++i){
