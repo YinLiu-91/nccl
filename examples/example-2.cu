@@ -12,7 +12,6 @@
 #include <iostream>
 #include <printf.h>
 
-
 #define MPICHECK(cmd) do {                          \
   int e = cmd;                                      \
   if( e != MPI_SUCCESS ) {                          \

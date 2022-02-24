@@ -4,3 +4,6 @@
 [submodule "nccl-test"]
 	path = nccl-test
 	url = https://github.com/NVIDIA/nccl-tests.git
+[submodule "multi-gpu-programming-models"]
+	path = multi-gpu-programming-models
+	url = https://github.com/YinLiu-91/multi-gpu-programming-models.git

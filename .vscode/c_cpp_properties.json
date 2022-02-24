@@ -3,7 +3,7 @@
         {
             "name": "Linux",
             "includePath": [
-                "/usr/local/cuda-11.4/include",
+                "/usr/local/cuda/include",
                 "/usr/include/c++/9",
                 "/home/liu/documents/work/cuda/nccl/build/include",
                 "/usr/include"
