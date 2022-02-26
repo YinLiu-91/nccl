@@ -163,19 +163,19 @@ int main(int argc, char *argv[]) {
     NCCLCHECK(ncclCommInitRank(&comm, nRanks, id, myRank));
 
     // after send and recv ,recvbuff will be have the same value with send buff
-    
+    NCCLCHECK(ncclGroupStart());
     //================case1: mustbe dead lock=========================
-    // wrong case1, it will make a dead lock
-    // if (myRank == 0)
-    // {
-    //     NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 1, comm, s));
-    //     NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 1, comm, s));
-    // }
-    // else if (myRank == 1)
-    // {
-    //     NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 0, comm, s));
-    //     NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 0, comm, s));
-    // }
+    // wrong case1, it will make a dead lock if if it is not between ncclGroupStart() and ncclGroupEnd
+    if (myRank == 0)
+    {
+        NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 1, comm, s));
+        NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 1, comm, s));
+    }
+    else if (myRank == 1)
+    {
+        NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 0, comm, s));
+        NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 0, comm, s));
+    }
 
     //================case2: maybe dead lock=========================
     // wrong case1, it maybe make a dead lock,but it will work well mostly if thre evolope is not full
@@ -192,18 +192,18 @@ int main(int argc, char *argv[]) {
 
     //================case3:  good case =========================
     //
-    if (myRank == 0)
-    {
-        NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 1, comm, s));
-        NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 1, comm, s));
+    // if (myRank == 0)
+    // {
+    //     NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 1, comm, s));
+    //     NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 1, comm, s));
 
-    }
-    else if (myRank == 1)
-    {
-        NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 0, comm, s));
-        NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 0, comm, s));
-    }
-
+    // }
+    // else if (myRank == 1)
+    // {
+    //     NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 0, comm, s));
+    //     NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 0, comm, s));
+    // }
+    NCCLCHECK(ncclGroupEnd());
 
     cudaMemcpy(hptr,recvbuff,size*sizeof(float),cudaMemcpyDeviceToHost);
     for(int i=0;i<size;++i){
