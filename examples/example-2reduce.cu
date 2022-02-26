@@ -147,8 +147,6 @@ int main(int argc, char *argv[]) {
     CUDACHECK(cudaMalloc(&sendbuff, size * sizeof(float)));
     CUDACHECK(cudaMalloc(&recvbuff, size * sizeof(float)));
     CUDACHECK(cudaStreamCreate(&s));
-    float* scatteredResultD,scatteredResultH;
-    cudaMalloc(&scatteredResultD,1*sizeof(float));
 
     // call init kernel to init data
     init<<<1, size>>>(sendbuff,myRank);
@@ -164,13 +162,16 @@ int main(int argc, char *argv[]) {
     NCCLCHECK(ncclCommInitRank(&comm, nRanks, id, myRank));
 
     // communicating using NCCL
-    NCCLCHECK(ncclAllReduce((const void *) sendbuff, (void *) recvbuff,
-                            1, ncclFloat, ncclSum,
-                            comm, s));
-    
-    cudaMemcpy(&scatteredResultH,scatteredResultD,sizeof(float),cudaMemcpyDeviceToHost);
-    std::cout<<"myRank: "<<myRank<<" scatteredResultH: "<<scatteredResultH<<"\n";
-
+    NCCLCHECK(ncclReduce((const void *)sendbuff, (void *)recvbuff,
+                         size, ncclFloat, ncclSum, 0,
+                         comm, s));
+                         
+    cudaMemcpy(hptr,recvbuff,size*sizeof(float),cudaMemcpyDeviceToHost);
+    std::cout << "recvbuff:\n";
+    for (int i = 0; i < size; ++i)
+    {
+        std::cout << "myRank: " << myRank << " hptr["<<i<<"]: " << hptr[i] << "\n";
+    }
 
     // completing NCCL operation by synchronizing on the CUDA stream
     CUDACHECK(cudaStreamSynchronize(s));
