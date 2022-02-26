@@ -173,9 +173,14 @@ int main(int argc, char *argv[]) {
                             comm, s));
     
     cudaMemcpy(hptr,recvbuff,size*sizeof(float),cudaMemcpyDeviceToHost);
+<<<<<<< HEAD
     std::cout<<"recvbuff:\n";
     for(int i=0;i<size;++i){
         std::cout<<"myRank: "<<myRank<<" i: "<<i<<" hptr[i]: "<<hptr[i]<<"\n";
+=======
+    for(int i=0;i<size;++i){
+        std::cout<<"myRank-recvbuff: "<<myRank<<" i: "<<i<<" hptr[i]: "<<hptr[i]<<"\n";
+>>>>>>> 930cbcd5045ff91113516be17f3a908b4e584ca4
     }
 
     // completing NCCL operation by synchronizing on the CUDA stream
