@@ -12,6 +12,10 @@
 #include <iostream>
 #include <printf.h>
 #include <string>
+#ifdef __linux
+#include <unistd.h>
+#endif
+
 #define MPICHECK(cmd) do {                          \
   int e = cmd;                                      \
   if( e != MPI_SUCCESS ) {                          \
@@ -69,9 +73,11 @@ int main(int argc, char *argv[]) {
     {
         int i = 0;
         char host[256];
+#ifdef __linux
         printf("PID %d on node %s is ready for attach\n",
                getpid(), host);
         fflush(stdout);
+#endif
         if(argc!=2){
             std::cout<<"Please input a int,'0' means for debug,'1' means execute directly\n";
         }

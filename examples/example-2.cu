@@ -11,6 +11,9 @@
 #include <stdlib.h>
 #include <iostream>
 #include <printf.h>
+#ifdef __linux
+#include <unistd.h>
+#endif
 
 #define MPICHECK(cmd) do {                          \
   int e = cmd;                                      \
@@ -69,16 +72,24 @@ int main(int argc, char *argv[]) {
     {
         int i = 0;
         char host[256];
+#ifdef __linux
         printf("PID %d on node %s is ready for attach\n",
                getpid(), host);
         fflush(stdout);
-        // {
-        //     int i = 0;
-        //     while (i == 0)
-        //     {
-        //         int j = 3;
-        //     }
-        // }
+#endif
+        if(argc!=2){
+            std::cout<<"Please input a int,'0' means for debug,'1' means execute directly\n";
+        }
+        if (std::stoi(argv[1]) == 0)
+        {
+            {
+                int i = 0;
+                while (i == 0)
+                {
+                    int j = 3;
+                }
+            }
+        }
     }
 
     int size = 2;
