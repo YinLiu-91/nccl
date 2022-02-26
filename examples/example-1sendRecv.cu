@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
       // 当ncclRecv,ncclRecv在ncclGroupStart()和ncclGroupEnd()之间时,就像IRecv和ISend一样,
       // 像下面这样写就不会lock,不然就死锁
       NCCLCHECK(ncclRecv(recvbuff[i], size, ncclFloat, (i + 1) % 2, comms[i], s[i]));
-      NCCLCHECK(ncclRecv(sendbuff[i], size, ncclFloat, (i + 1) % 2, comms[i], s[i]));
+      NCCLCHECK(ncclSend(sendbuff[i], size, ncclFloat, (i + 1) % 2, comms[i], s[i]));
 
     }
     NCCLCHECK(ncclGroupEnd());
