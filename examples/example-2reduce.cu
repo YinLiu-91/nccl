@@ -184,7 +184,7 @@ int main(int argc, char *argv[]) {
 
     // finalizing MPI
     MPICHECK(MPI_Finalize());
-
+    free(hptr);
     printf("[MPI Rank %d] Success \n", myRank);
     // cudaDeviceSynchronize();
     return 0;

@@ -73,9 +73,16 @@ ncclResult_t NCCLSendRecv(void *sendbuff, size_t sendcount, ncclDataType_t datat
                           void *recvbuff,size_t recvcount,ncclComm_t comm, cudaStream_t stream)
 {
     ncclGroupStart();
-      ncclRecv(recvbuff, recvcount, datatype, peer, comm, stream);
-      ncclSend(sendbuff, sendcount, datatype, peer, comm, stream);
+    auto a = ncclSend(sendbuff, sendcount, datatype, peer, comm, stream);
+    auto b = ncclRecv(recvbuff, recvcount, datatype, peer, comm, stream);
     ncclGroupEnd();
+    if (a||b)
+    {
+      if(a)
+        return a;
+      return b;
+    }
+    return a;
 }
 
 int main(int argc, char *argv[]) {
@@ -204,7 +211,7 @@ int main(int argc, char *argv[]) {
 
     // finalizing MPI
     MPICHECK(MPI_Finalize());
-
+    free(hptr);
     printf("[MPI Rank %d] Success \n", myRank);
     // cudaDeviceSynchronize();
     return 0;

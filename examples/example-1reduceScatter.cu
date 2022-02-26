@@ -105,8 +105,9 @@ int main(int argc, char *argv[]) {
 
     for(int i=0;i<size;++i){
       for(int j=0;j<nDev;++j)
-      std::cout<<"Device: "<<j<<" recvbuff["<<i<<"]:"<<hptr[j][i]<<"\n";
+        std::cout << "Device: " << j << " recvbuff[" << i << "]:" << hptr[j][i] << "\n";
     }
+    free(hptr);
     printf("Success \n");
     return 0;
 }

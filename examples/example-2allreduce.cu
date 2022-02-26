@@ -178,7 +178,7 @@ int main(int argc, char *argv[]) {
     // free device buffers
     CUDACHECK(cudaFree(sendbuff));
     CUDACHECK(cudaFree(recvbuff));
-
+    free(hptr);
     // finalizing NCCL
     ncclCommDestroy(comm);
 

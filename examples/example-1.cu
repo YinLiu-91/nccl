@@ -113,6 +113,7 @@ int main(int argc, char *argv[]) {
       for(int j=0;j<nDev;++j)
       std::cout<<"i= "<<i<<" "<<hptr[j][i]<<"\n";
     }
+    free(hptr);
     printf("Success \n");
     return 0;
 }

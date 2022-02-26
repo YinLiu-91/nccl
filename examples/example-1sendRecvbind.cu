@@ -34,6 +34,22 @@ __global__ void  init1(float *dptr,int i)
   printf("GPU: %d,dptr: %f\n",i,dptr[id]);
 }
 
+// 利用ncclGroupStart(),ncclGroupEnd()实现sendrecv
+ncclResult_t NCCLSendRecv(void *sendbuff, size_t sendcount, ncclDataType_t datatype, int peer,
+                          void *recvbuff,size_t recvcount,ncclComm_t comm, cudaStream_t stream)
+{
+    ncclGroupStart();
+      auto a=ncclSend(sendbuff, sendcount, datatype, peer, comm, stream);
+      auto b=ncclRecv(recvbuff, recvcount, datatype, peer, comm, stream);
+    ncclGroupEnd();
+    if (a||b)
+    {
+      if(a)
+        return a;
+      return b;
+    }
+    return a;
+}
 int main(int argc, char *argv[]) {
 
     ncclComm_t comms[2];
@@ -77,7 +93,7 @@ int main(int argc, char *argv[]) {
     // 详见 https://gitee.com/liuyin-91/ncclexamples/blob/master/documents/nvdia%E5%AE%98%E6%96%B9documentation.md#%E4%BB%8E%E4%B8%80%E4%B8%AA%E7%BA%BF%E7%A8%8B%E7%AE%A1%E7%90%86%E5%A4%9A%E4%B8%AA-gpu 
     
     
-    NCCLCHECK(ncclGroupStart());
+    // NCCLCHECK(ncclGroupStart());
     for (int i = 0; i < nDev; ++i)
     {
       CUDACHECK(cudaSetDevice(i));
@@ -88,11 +104,14 @@ int main(int argc, char *argv[]) {
       // work fine only if it is between ncclGroupStart() and ncclGroupEnd()
       // 当ncclRecv,ncclRecv在ncclGroupStart()和ncclGroupEnd()之间时,就像IRecv和ISend一样,
       // 像下面这样写就不会lock,不然就死锁
-      NCCLCHECK(ncclRecv(recvbuff[i], size, ncclFloat, (i + 1) % 2, comms[i], s[i]));
-      NCCLCHECK(ncclSend(sendbuff[i], size, ncclFloat, (i + 1) % 2, comms[i], s[i]));
+      // NCCLCHECK(ncclRecv(recvbuff[i], size, ncclFloat, (i + 1) % 2, comms[i], s[i]));
+      // NCCLCHECK(ncclSend(sendbuff[i], size, ncclFloat, (i + 1) % 2, comms[i], s[i]));
+
+      // 防止死锁的好方法
+      NCCLSendRecv(sendbuff[i],size,ncclFloat,(i + 1) % 2,recvbuff[i],size,comms[i],s[i]);
 
     }
-    NCCLCHECK(ncclGroupEnd());
+    // NCCLCHECK(ncclGroupEnd());
 
     // synchronizing on CUDA streams to wait for completion of NCCL operation
     for (int i = 0; i < nDev; ++i) {
