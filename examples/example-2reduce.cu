@@ -11,7 +11,6 @@
 #include <stdlib.h>
 #include <iostream>
 #include <printf.h>
-#include <string>
 #ifdef __linux
 #include <unistd.h>
 #endif
@@ -146,11 +145,10 @@ int main(int argc, char *argv[]) {
     // picking a GPU based on localRank, allocate device buffers
     CUDACHECK(cudaSetDevice(localRank));
     CUDACHECK(cudaMalloc(&sendbuff, size * sizeof(float)));
-    // recv buffer must have the same size as sendbuff
     CUDACHECK(cudaMalloc(&recvbuff, size * sizeof(float)));
     CUDACHECK(cudaStreamCreate(&s));
-
-
+    float* scatteredResultD,scatteredResultH;
+    cudaMalloc(&scatteredResultD,1*sizeof(float));
 
     // call init kernel to init data
     init<<<1, size>>>(sendbuff,myRank);
@@ -158,32 +156,27 @@ int main(int argc, char *argv[]) {
     // malloc host mem
     float *hptr = (float *)malloc(size * sizeof(float));
     cudaMemcpy(hptr,sendbuff,size*sizeof(float),cudaMemcpyDeviceToHost);
-    std::cout<<"sendbuff:\n";
     for(int i=0;i<size;++i){
-        std::cout<<"myRank: "<<myRank<<" i: "<<i<<" hptr[i]: "<<hptr[i]<<"\n";
+        std::cout<<"myRank-sendbuff: "<<myRank<<" i: "<<i<<" hptr[i]: "<<hptr[i]<<"\n";
     }
 
     // initializing NCCL
     NCCLCHECK(ncclCommInitRank(&comm, nRanks, id, myRank));
 
-    // communicating using NCCL   
-    // recvcount means the count for every rank recivered from sendbuff
-    NCCLCHECK(ncclReduceScatter((const void *) sendbuff, (void *) recvbuff,
+    // communicating using NCCL
+    NCCLCHECK(ncclAllReduce((const void *) sendbuff, (void *) recvbuff,
                             1, ncclFloat, ncclSum,
                             comm, s));
     
-    cudaMemcpy(hptr,recvbuff,size*sizeof(float),cudaMemcpyDeviceToHost);
-    std::cout<<"recvbuff:\n";
-    for(int i=0;i<size;++i){
-        std::cout<<"myRank: "<<myRank<<" i: "<<i<<" hptr[i]: "<<hptr[i]<<"\n";
-    }
+    cudaMemcpy(&scatteredResultH,scatteredResultD,sizeof(float),cudaMemcpyDeviceToHost);
+    std::cout<<"myRank: "<<myRank<<" scatteredResultH: "<<scatteredResultH<<"\n";
+
 
     // completing NCCL operation by synchronizing on the CUDA stream
     CUDACHECK(cudaStreamSynchronize(s));
     // free device buffers
     CUDACHECK(cudaFree(sendbuff));
     CUDACHECK(cudaFree(recvbuff));
-    free(hptr);
 
     // finalizing NCCL
     ncclCommDestroy(comm);
