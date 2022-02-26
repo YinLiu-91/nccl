@@ -48,7 +48,7 @@ ncclResult_t NCCLSendRecv(void *sendbuff, size_t sendcount, ncclDataType_t datat
         return a;
       return b;
     }
-    return a;
+    return ncclSuccess;
 }
 int main(int argc, char *argv[]) {
 

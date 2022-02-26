@@ -85,6 +85,49 @@ ncclResult_t NCCLSendRecv(void *sendbuff, size_t sendcount, ncclDataType_t datat
     return ncclSuccess;
 }
 
+static __inline__ int ncclTypeSize(ncclDataType_t type) {
+  switch (type) {
+    case ncclInt8:
+    case ncclUint8:
+      return 1;
+    case ncclFloat16:
+#if defined(__CUDA_BF16_TYPES_EXIST__)
+    case ncclBfloat16:
+#endif
+      return 2;
+    case ncclInt32:
+    case ncclUint32:
+    case ncclFloat32:
+      return 4;
+    case ncclInt64:
+    case ncclUint64:
+    case ncclFloat64:
+      return 8;
+    default:
+      return -1;
+  }
+}
+
+ncclResult_t NCCLGather(void *sendbuff, size_t sendcount, ncclDataType_t senddatatype, void *recvbuff,
+                        size_t recvcount, ncclDataType_t recvdatatype, int root, int myRank,int nRanks,ncclComm_t comm, cudaStream_t stream)
+{
+    ncclGroupStart();
+    auto a = ncclSend(sendbuff, sendcount, senddatatype, root, comm, stream);
+    if(a){
+        return a;
+    }
+    if(myRank==root){
+        for(int i=0;i<nRanks;++i){
+           auto b=ncclRecv(recvbuff+i*ncclTypeSize(recvdatatype)*recvcount,recvcount,recvdatatype,i,comm,stream);
+           if(b){
+               return b;
+           }
+        }
+    }
+    ncclGroupEnd();
+    return ncclSuccess;
+}
+
 int main(int argc, char *argv[]) {
     {
         int i = 0;
@@ -163,14 +206,14 @@ int main(int argc, char *argv[]) {
     // picking a GPU based on localRank, allocate device buffers
     CUDACHECK(cudaSetDevice(localRank));
     CUDACHECK(cudaMalloc(&sendbuff, size * sizeof(float)));
-    CUDACHECK(cudaMalloc(&recvbuff, size * sizeof(float)));
+    CUDACHECK(cudaMalloc(&recvbuff, nRanks*size * sizeof(float)));
     CUDACHECK(cudaStreamCreate(&s));
 
     // call init kernel to init data
     init<<<1, size>>>(sendbuff,myRank);
 
     // malloc host mem
-    float *hptr = (float *)malloc(size * sizeof(float));
+    float *hptr = (float *)malloc(nRanks*size * sizeof(float));
     cudaMemcpy(hptr,sendbuff,size*sizeof(float),cudaMemcpyDeviceToHost);
     for(int i=0;i<size;++i){
         std::cout<<"myRank-sendbuff: "<<myRank<<" i: "<<i<<" hptr[i]: "<<hptr[i]<<"\n";
@@ -179,8 +222,10 @@ int main(int argc, char *argv[]) {
     // initializing NCCL
     NCCLCHECK(ncclCommInitRank(&comm, nRanks, id, myRank));
 
+
+    NCCLGather(sendbuff,size,ncclFloat,recvbuff,size,ncclFloat,0,myRank,nRanks,comm,s);
     // 使用新写的函数实现防死锁的send,recive
-    NCCLSendRecv(sendbuff,size,ncclFloat,(myRank+1)%2,recvbuff,size,comm,s);
+    // NCCLSendRecv(sendbuff,size,ncclFloat,(myRank+1)%2,recvbuff,size,comm,s);
     /* 原始版本
     if (myRank == 0)
     {
@@ -195,8 +240,8 @@ int main(int argc, char *argv[]) {
     }
     */
 
-    cudaMemcpy(hptr,recvbuff,size*sizeof(float),cudaMemcpyDeviceToHost);
-    for(int i=0;i<size;++i){
+    cudaMemcpy(hptr,recvbuff,nRanks*size*sizeof(float),cudaMemcpyDeviceToHost);
+    for(int i=0;i<nRanks*size;++i){
         std::cout<<"myRank-recvbuff: "<<myRank<<" i: "<<i<<" hptr[i]: "<<hptr[i]<<"\n";
     }
     // completing NCCL operation by synchronizing on the CUDA stream
