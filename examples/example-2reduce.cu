@@ -91,7 +91,6 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-
     int size = 2;
     int myRank, nRanks, localRank = 0;
     // initializing MPI
