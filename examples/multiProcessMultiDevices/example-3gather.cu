@@ -1,6 +1,35 @@
 //
 // Multiple Devices per Thread
 // 
+
+// 
+// compile command: nvcc -g -G ./example-3gather.cu -o ex3gather.out -lnccl -lmpi
+// 
+
+//
+// execute command: mpirun -np 2 ./ex3gather.out 
+//
+/* output result:
+myRank: 0 localRank: 0
+myRank: 1 localRank: 1
+myRank0 sendbuff[0]
+ j: 0 hptr[i][j]: 0
+ j: 1 hptr[i][j]: 1
+ j: 2 hptr[i][j]: 2
+myRank1 sendbuff[0]
+ j: 0 hptr[i][j]: 0
+ j: 1 hptr[i][j]: 1
+ j: 2 hptr[i][j]: 2
+Root is:0 ncclgather result is :
+ j: 0 hptr[i][j]: 0
+ j: 1 hptr[i][j]: 1
+ j: 2 hptr[i][j]: 2
+ j: 3 hptr[i][j]: 0
+ j: 4 hptr[i][j]: 1
+ j: 5 hptr[i][j]: 2
+[MPI Rank 0] Success 
+[MPI Rank 1] Success
+*/
 #include <stdio.h>
 #include "cuda_runtime.h"
 #include "nccl.h"
@@ -63,7 +92,6 @@ __global__ void  init(float *dptr,int myRank)
 {
   int id = threadIdx.x;
   dptr[id] = id;
-//   printf("kernel-myRank: %d id: %f\n",myRank,dptr[id]);
 }
 
 static __inline__ int ncclTypeSize(ncclDataType_t type) {
@@ -112,47 +140,47 @@ ncclResult_t NCCLGather(void *sendbuff, size_t sendcount, ncclDataType_t senddat
 int main(int argc, char* argv[])
 {
     //each process is using two GPUs
-  int nDev = 1;
-  int size = 3;
+    int nDev = 1;
+    int root = 0;
+    int size = 3;
 
-  int myRank, nRanks, localRank = 0;
+    int myRank, nRanks, localRank = 0;
 
+    //initializing MPI
+    MPICHECK(MPI_Init(&argc, &argv));
+    MPICHECK(MPI_Comm_rank(MPI_COMM_WORLD, &myRank));
+    MPICHECK(MPI_Comm_size(MPI_COMM_WORLD, &nRanks));
 
-  //initializing MPI
-  MPICHECK(MPI_Init(&argc, &argv));
-  MPICHECK(MPI_Comm_rank(MPI_COMM_WORLD, &myRank));
-  MPICHECK(MPI_Comm_size(MPI_COMM_WORLD, &nRanks));
+    //calculating localRank which is used in selecting a GPU
+    uint64_t hostHashs[nRanks];
+    char hostname[1024];
+    getHostName(hostname, 1024);
+    hostHashs[myRank] = getHostHash(hostname);
+    MPICHECK(MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, hostHashs, sizeof(uint64_t), MPI_BYTE, MPI_COMM_WORLD));
+    for (int p = 0; p < nRanks; p++)
+    {
+      if (p == myRank)
+        break;
+      if (hostHashs[p] == hostHashs[myRank])
+        localRank++;
+    }
+    std::cout << "myRank: " << myRank << " localRank: " << localRank << "\n";
 
+    float **sendbuff = (float **)malloc(nDev * sizeof(float *));
+    float **recvbuff = (float **)malloc(nDev * sizeof(float *));
+    float **hptr = (float **)malloc(nDev * sizeof(float *));
+    cudaStream_t *s = (cudaStream_t *)malloc(sizeof(cudaStream_t) * nDev);
 
-  //calculating localRank which is used in selecting a GPU
-  uint64_t hostHashs[nRanks];
-  char hostname[1024];
-  getHostName(hostname, 1024);
-  hostHashs[myRank] = getHostHash(hostname);
-  MPICHECK(MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, hostHashs, sizeof(uint64_t), MPI_BYTE, MPI_COMM_WORLD));
-  for (int p=0; p<nRanks; p++) {
-     if (p == myRank) break;
-     if (hostHashs[p] == hostHashs[myRank]) localRank++;
-  }
-    std::cout<<"myRank: "<<myRank<<" localRank: "<<localRank<<"\n";
-
-
-
-  float** sendbuff = (float**)malloc(nDev * sizeof(float*));
-  float** recvbuff = (float**)malloc(nDev * sizeof(float*));
-  float** hptr = (float**)malloc(nDev * sizeof(float*));
-  cudaStream_t* s = (cudaStream_t*)malloc(sizeof(cudaStream_t)*nDev);
-
-
-  //picking GPUs based on localRank
-  for (int i = 0; i < nDev; ++i) {
-    CUDACHECK(cudaSetDevice(localRank*nDev + i));// 给所有设备编号
-    CUDACHECK(cudaMalloc(sendbuff + i, size * sizeof(float)));
-    CUDACHECK(cudaMalloc(recvbuff + i, nDev*nRanks*size * sizeof(float)));
-    CUDACHECK(cudaMemset(sendbuff[i], 1, size * sizeof(float)));
-    CUDACHECK(cudaMemset(recvbuff[i], 0, size * sizeof(float)));
-    CUDACHECK(cudaStreamCreate(s+i));
-    hptr[i]=(float*)malloc(nDev*nRanks*size*sizeof(float));
+    //picking GPUs based on localRank
+    for (int i = 0; i < nDev; ++i)
+    {
+      CUDACHECK(cudaSetDevice(localRank * nDev + i)); // 给所有设备编号
+      CUDACHECK(cudaMalloc(sendbuff + i, size * sizeof(float)));
+      CUDACHECK(cudaMalloc(recvbuff + i, nDev * nRanks * size * sizeof(float)));
+      CUDACHECK(cudaMemset(sendbuff[i], 1, size * sizeof(float)));
+      CUDACHECK(cudaMemset(recvbuff[i], 0, size * sizeof(float)));
+      CUDACHECK(cudaStreamCreate(s + i));
+      hptr[i] = (float *)malloc(nDev * nRanks * size * sizeof(float));
   }
 
 
@@ -183,15 +211,19 @@ int main(int argc, char* argv[])
 
   // gather Data
   for(int i=0;i<nDev;++i){
-    NCCLGather(sendbuff[i], size, ncclFloat, recvbuff[i], size, ncclFloat, 0, myRank * nDev + i, nRanks * nDev, comms[i], s[i]);
+    NCCLGather(sendbuff[i], size, ncclFloat, recvbuff[i], size, ncclFloat, root, myRank * nDev + i, nRanks * nDev, comms[i], s[i]);
   }
 
   for (int i = 0; i < nDev; ++i)
   {
-    cudaMemcpy(hptr[i], recvbuff[i], nDev*nRanks* size * sizeof(float), cudaMemcpyDeviceToHost);
-    std::cout<<"myRank"<<myRank<<" recvbuff["<<i<<"]"<<"\n";
-    for(int j=0;j<nRanks*nDev*size;++j){
-        std::cout<<" j: "<<j<<" hptr[i][j]: "<<hptr[i][j]<<"\n";
+    if(myRank * nDev + i==root)
+    {
+      cudaMemcpy(hptr[i], recvbuff[i], nDev * nRanks * size * sizeof(float), cudaMemcpyDeviceToHost);
+      std::cout << "Root is:" << root << " ncclgather result is :\n";
+      for (int j = 0; j < nRanks * nDev * size; ++j)
+      {
+        std::cout << " j: " << j << " hptr[i][j]: " << hptr[i][j] << "\n";
+      }
     }
   }
 
