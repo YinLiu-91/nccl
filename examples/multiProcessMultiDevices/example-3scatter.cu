@@ -1,6 +1,37 @@
 //
 // Multiple Devices per Thread
 // 
+// 
+// compile command: nvcc -g -G ./example-3scatter.cu -o ex3scatter.out -lnccl -lmpi  
+//  or remove '-g -G' flag for release version
+// 
+
+//
+// execute command: mpirun -np 2 ./ex3scatter.out 
+//
+/* output result:
+
+myRank: 0 localRank: 0
+myRank: 1 localRank: 1
+myRank0 sendbuff[0]
+ j: 0 hptr[i][j]: 0
+ j: 1 hptr[i][j]: 1
+ j: 2 hptr[i][j]: 2
+ j: 3 hptr[i][j]: 3
+ j: 4 hptr[i][j]: 4
+ j: 5 hptr[i][j]: 5
+myRank1 recvbuff[0]
+ j: 0 hptr[i][j]: 3
+ j: 1 hptr[i][j]: 4
+ j: 2 hptr[i][j]: 5
+myRank0 recvbuff[0]
+ j: 0 hptr[i][j]: 0
+ j: 1 hptr[i][j]: 1
+ j: 2 hptr[i][j]: 2
+[MPI Rank 0] Success 
+[MPI Rank 1] Success
+*/
+
 #include <stdio.h>
 #include "cuda_runtime.h"
 #include "nccl.h"

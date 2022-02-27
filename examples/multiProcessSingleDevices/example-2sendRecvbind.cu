@@ -172,8 +172,9 @@ int main(int argc, char *argv[]) {
     // malloc host mem
     float *hptr = (float *)malloc(size * sizeof(float));
     cudaMemcpy(hptr,sendbuff,size*sizeof(float),cudaMemcpyDeviceToHost);
+    std::cout<<"myRank is: "<<myRank<<"\n";
     for(int i=0;i<size;++i){
-        std::cout<<"myRank-sendbuff: "<<myRank<<" i: "<<i<<" hptr[i]: "<<hptr[i]<<"\n";
+        std::cout<<"sendbuff: "<<" i: "<<i<<" hptr[i]: "<<hptr[i]<<"\n";
     }
 
     // initializing NCCL
@@ -181,23 +182,11 @@ int main(int argc, char *argv[]) {
 
     // 使用新写的函数实现防死锁的send,recive
     NCCLSendRecv(sendbuff,size,ncclFloat,(myRank+1)%2,recvbuff,size,comm,s);
-    /* 原始版本
-    if (myRank == 0)
-    {
-        NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 1, comm, s));
-        NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 1, comm, s));
-
-    }
-    else if (myRank == 1)
-    {
-        NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 0, comm, s));
-        NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 0, comm, s));
-    }
-    */
 
     cudaMemcpy(hptr,recvbuff,size*sizeof(float),cudaMemcpyDeviceToHost);
+    std::cout<<"myRank is: "<<myRank<<"\n";
     for(int i=0;i<size;++i){
-        std::cout<<"myRank-recvbuff: "<<myRank<<" i: "<<i<<" hptr[i]: "<<hptr[i]<<"\n";
+        std::cout<<"recvbuff: "<<" i: "<<i<<" hptr[i]: "<<hptr[i]<<"\n";
     }
     // completing NCCL operation by synchronizing on the CUDA stream
     CUDACHECK(cudaStreamSynchronize(s));
