@@ -90,24 +90,23 @@ static __inline__ int ncclTypeSize(ncclDataType_t type) {
 }
 
 ncclResult_t NCCLScather(void *sendbuff, size_t sendcount, ncclDataType_t senddatatype, void *recvbuff,
-                        size_t recvcount, ncclDataType_t recvdatatype, int root, int myRank,int nRanks,ncclComm_t comm, cudaStream_t stream)
+                         size_t recvcount, ncclDataType_t recvdatatype, int root, int myRank, int nRanks, ncclComm_t comm, cudaStream_t stream)
 {
-    ncclGroupStart();
-    if(myRank==root){
-        for(int i=0;i<nRanks;++i){
-           auto a=ncclSend(sendbuff+i*ncclTypeSize(senddatatype)*sendcount,sendcount,recvdatatype,i,comm,stream);
-           if(a){
-               return a;
-           }
-        }
-    }
-    auto b=ncclRecv(recvbuff,recvcount,recvdatatype,root,comm,stream);
-    if (b)
+  ncclGroupStart();
+  if (myRank == root)
+  {
+    for (int i = 0; i < nRanks; ++i)
     {
-      return b;
+      auto a = ncclSend(sendbuff + i * ncclTypeSize(senddatatype) * sendcount, sendcount, recvdatatype, i, comm, stream);
+      if (a)
+        return a;
     }
-    ncclGroupEnd();
-    return ncclSuccess;
+  }
+  auto b = ncclRecv(recvbuff, recvcount, recvdatatype, root, comm, stream);
+  if (b)
+    return b;
+  ncclGroupEnd();
+  return ncclSuccess;
 }
 
 int main(int argc, char* argv[])
