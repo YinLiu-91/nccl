@@ -47,7 +47,7 @@ ncclResult_t NCCLSendRecv(void *sendbuff, size_t sendcount, ncclDataType_t datat
     return ncclSuccess;
 }
 
-
+// Please be aware that sendcount,recvcount is the count for single rank
 ncclResult_t NCCLAlltoall(void *sendbuff, size_t sendcount, ncclDataType_t senddatatype, void *recvbuff,
                          size_t recvcount, ncclDataType_t recvdatatype, ncclComm_t comm, cudaStream_t stream)
 {
@@ -65,6 +65,7 @@ ncclResult_t NCCLAlltoall(void *sendbuff, size_t sendcount, ncclDataType_t sendd
     return ncclSuccess;
 }
 
+// Please be aware that sendcount,recvcount is the count for single rank
 ncclResult_t NCCLGather(void *sendbuff, size_t sendcount, ncclDataType_t senddatatype, void *recvbuff,
                         size_t recvcount, ncclDataType_t recvdatatype, int root,ncclComm_t comm, 
                         cudaStream_t stream)
@@ -89,7 +90,8 @@ ncclResult_t NCCLGather(void *sendbuff, size_t sendcount, ncclDataType_t senddat
     return ncclSuccess;
 }
 
-ncclResult_t NCCLScather(void *sendbuff, size_t sendcount, ncclDataType_t senddatatype, void *recvbuff,
+// Please be aware that sendcount,recvcount is the count for single rank
+ncclResult_t NCCLScatter(void *sendbuff, size_t sendcount, ncclDataType_t senddatatype, void *recvbuff,
                          size_t recvcount, ncclDataType_t recvdatatype, int root, 
                          ncclComm_t comm, cudaStream_t stream)
 {
