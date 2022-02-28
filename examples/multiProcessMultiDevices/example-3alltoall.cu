@@ -156,7 +156,7 @@ int main(int argc, char* argv[])
   // scatter Data
   int sendsize=size/(nRanks*nDev);
   for(int i=0;i<nDev;++i){
-    NCCLAlltoall(sendbuff[i],sendsize,ncclFloat,recvbuff[i],sendsize,ncclFloat,nRanks*nDev,comms[i],s[i]);
+    NCCLAlltoall(sendbuff[i],sendsize,ncclFloat,recvbuff[i],sendsize,ncclFloat,comms[i],s[i]);
   }
 
   for (int i = 0; i < nDev; ++i)

@@ -182,7 +182,7 @@ int main(int argc, char *argv[]) {
     NCCLCHECK(ncclCommInitRank(&comm, nRanks, id, myRank));
 
 
-    NCCLGather(sendbuff,size,ncclFloat,recvbuff,size,ncclFloat,0,myRank,nRanks,comm,s);
+    NCCLGather(sendbuff,size,ncclFloat,recvbuff,size,ncclFloat,0,comm,s);
     // 使用新写的函数实现防死锁的send,recive
     // NCCLSendRecv(sendbuff,size,ncclFloat,(myRank+1)%2,recvbuff,size,comm,s);
     /* 原始版本

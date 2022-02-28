@@ -25,7 +25,12 @@ static __inline__ int ncclTypeSize(ncclDataType_t type) {
   }
 }
 
-// 利用ncclGroupStart(),ncclGroupEnd()实现sendrecv
+/*
+ * Send-recive
+ *
+ * re
+ *
+ */
 ncclResult_t NCCLSendRecv(void *sendbuff, size_t sendcount, ncclDataType_t datatype, int peer,
                           void *recvbuff,size_t recvcount,ncclComm_t comm, cudaStream_t stream)
 {
@@ -44,25 +49,30 @@ ncclResult_t NCCLSendRecv(void *sendbuff, size_t sendcount, ncclDataType_t datat
 
 
 ncclResult_t NCCLAlltoall(void *sendbuff, size_t sendcount, ncclDataType_t senddatatype, void *recvbuff,
-                         size_t recvcount, ncclDataType_t recvdatatype, int nRanks, ncclComm_t comm, cudaStream_t stream)
+                         size_t recvcount, ncclDataType_t recvdatatype, ncclComm_t comm, cudaStream_t stream)
 {
-  ncclGroupStart();
-  for (int i = 0; i < nRanks; ++i)
-  {
-    auto a = NCCLSendRecv(sendbuff + i * ncclTypeSize(senddatatype) * sendcount, sendcount, senddatatype, i, recvbuff + 
-            i * ncclTypeSize(recvdatatype) * recvcount,recvcount, comm, stream);
-    if (a)
-      return a;
-  }
-  ncclGroupEnd();
-  return ncclSuccess;
+    ncclGroupStart();
+    int nRanks;
+    ncclCommCount(comm, &nRanks);
+    for (int i = 0; i < nRanks; ++i)
+    {
+        auto a = NCCLSendRecv(sendbuff + i * ncclTypeSize(senddatatype) * sendcount, sendcount, senddatatype, i, 
+                    recvbuff + i * ncclTypeSize(recvdatatype) * recvcount, recvcount, comm, stream);
+        if (a)
+            return a;
+    }
+    ncclGroupEnd();
+    return ncclSuccess;
 }
 
 ncclResult_t NCCLGather(void *sendbuff, size_t sendcount, ncclDataType_t senddatatype, void *recvbuff,
-                        size_t recvcount, ncclDataType_t recvdatatype, int root, int myRank,int nRanks,ncclComm_t comm, 
+                        size_t recvcount, ncclDataType_t recvdatatype, int root,ncclComm_t comm, 
                         cudaStream_t stream)
 {
     ncclGroupStart();
+    int myRank,nRanks;
+    ncclCommUserRank(comm,&myRank);
+    ncclCommCount(comm, &nRanks);
     auto a = ncclSend(sendbuff, sendcount, senddatatype, root, comm, stream);
     if(a){
         return a;
@@ -80,23 +90,26 @@ ncclResult_t NCCLGather(void *sendbuff, size_t sendcount, ncclDataType_t senddat
 }
 
 ncclResult_t NCCLScather(void *sendbuff, size_t sendcount, ncclDataType_t senddatatype, void *recvbuff,
-                         size_t recvcount, ncclDataType_t recvdatatype, int root, int myRank, int nRanks, 
+                         size_t recvcount, ncclDataType_t recvdatatype, int root, 
                          ncclComm_t comm, cudaStream_t stream)
 {
-  ncclGroupStart();
-  if (myRank == root)
-  {
-    for (int i = 0; i < nRanks; ++i)
+    ncclGroupStart();
+    int myRank, nRanks;
+    ncclCommUserRank(comm, &myRank);
+    ncclCommCount(comm, &nRanks);
+    if (myRank == root)
     {
-      auto a = ncclSend(sendbuff + i * ncclTypeSize(senddatatype) * sendcount, sendcount, recvdatatype, i, comm, stream);
-      if (a)
-        return a;
+        for (int i = 0; i < nRanks; ++i)
+        {
+            auto a = ncclSend(sendbuff + i * ncclTypeSize(senddatatype) * sendcount, sendcount, recvdatatype, i, comm, stream);
+            if (a)
+                return a;
+        }
     }
-  }
-  auto b = ncclRecv(recvbuff, recvcount, recvdatatype, root, comm, stream);
-  if (b)
-    return b;
-  ncclGroupEnd();
-  return ncclSuccess;
+    auto b = ncclRecv(recvbuff, recvcount, recvdatatype, root, comm, stream);
+    if (b)
+        return b;
+    ncclGroupEnd();
+    return ncclSuccess;
 }
 #endif 

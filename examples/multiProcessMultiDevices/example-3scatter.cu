@@ -178,7 +178,7 @@ int main(int argc, char* argv[])
 
   // scatter Data
   for(int i=0;i<nDev;++i){
-    NCCLScather(sendbuff[i], size, ncclFloat, recvbuff[i], size, ncclFloat, root, myRank * nDev + i, nRanks * nDev, comms[i], s[i]);
+    NCCLScather(sendbuff[i], size, ncclFloat, recvbuff[i], size, ncclFloat, root, comms[i], s[i]);
   }
 
   for (int i = 0; i < nDev; ++i)
