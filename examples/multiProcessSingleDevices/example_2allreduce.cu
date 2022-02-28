@@ -2,11 +2,6 @@
 // Example 2: One Device Per Process Or Thread
 //
 
-// 
-// compile command: nvcc -g -G sourceFileName -o binFileName.out -lnccl -lmpi  
-// or remove '-g -G' flag for release version
-// 
-
 #include <stdio.h>
 #include "cuda_runtime.h"
 #include "nccl.h"
@@ -99,7 +94,6 @@ int main(int argc, char *argv[]) {
 
     int size = 2;
     int myRank, nRanks, localRank = 0;
-
     // initializing MPI
     MPICHECK(MPI_Init(&argc, &argv));
     MPICHECK(MPI_Comm_rank(MPI_COMM_WORLD, &myRank));
@@ -167,60 +161,24 @@ int main(int argc, char *argv[]) {
     // initializing NCCL
     NCCLCHECK(ncclCommInitRank(&comm, nRanks, id, myRank));
 
-    // after send and recv ,recvbuff will be have the same value with send buff
-    NCCLCHECK(ncclGroupStart());
-    //================case1: mustbe dead lock=========================
-    // wrong case1, it will make a dead lock if if it is not between ncclGroupStart() and ncclGroupEnd
-    if (myRank == 0)
-    {
-        NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 1, comm, s));
-        NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 1, comm, s));
-    }
-    else if (myRank == 1)
-    {
-        NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 0, comm, s));
-        NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 0, comm, s));
-    }
-
-    //================case2: maybe dead lock=========================
-    // wrong case1, it maybe make a dead lock,but it will work well mostly if thre evolope is not full
-    // if (myRank == 0)
-    // {
-    //     NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 1, comm, s));
-    //     NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 1, comm, s));
-    // }
-    // else if (myRank == 1)
-    // {
-    //     NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 0, comm, s));
-    //     NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 0, comm, s));
-    // }
-
-    //================case3:  good case =========================
-    //
-    // if (myRank == 0)
-    // {
-    //     NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 1, comm, s));
-    //     NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 1, comm, s));
-
-    // }
-    // else if (myRank == 1)
-    // {
-    //     NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 0, comm, s));
-    //     NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 0, comm, s));
-    // }
-    NCCLCHECK(ncclGroupEnd());
-
+    // // communicating using NCCL
+    NCCLCHECK(ncclAllReduce((const void *) sendbuff, (void *) recvbuff,
+                            size, ncclFloat, ncclSum,
+                            comm, s));
+    
     cudaMemcpy(hptr,recvbuff,size*sizeof(float),cudaMemcpyDeviceToHost);
     for(int i=0;i<size;++i){
         std::cout<<"myRank-recvbuff: "<<myRank<<" i: "<<i<<" hptr[i]: "<<hptr[i]<<"\n";
     }
     // completing NCCL operation by synchronizing on the CUDA stream
-    CUDACHECK(cudaStreamSynchronize(s));
 
+
+    // completing NCCL operation by synchronizing on the CUDA stream
+    CUDACHECK(cudaStreamSynchronize(s));
     // free device buffers
     CUDACHECK(cudaFree(sendbuff));
     CUDACHECK(cudaFree(recvbuff));
-
+    free(hptr);
     // finalizing NCCL
     ncclCommDestroy(comm);
 

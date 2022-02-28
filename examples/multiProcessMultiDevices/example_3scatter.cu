@@ -1,10 +1,6 @@
 //
 // Multiple Devices per Thread
 // 
-// 
-// compile command: nvcc -g -G sourceFileName -o binFileName.out -lnccl -lmpi  -I../
-//  or remove '-g -G' flag for release version
-// 
 
 //
 // execute command: mpirun -np 2 ./ex3scatter.out 

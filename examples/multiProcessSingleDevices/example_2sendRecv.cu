@@ -2,16 +2,10 @@
 // Example 2: One Device Per Process Or Thread
 //
 
-// 
-// compile command: nvcc -g -G sourceFileName -o binFileName.out -lnccl -lmpi  -I../
-// or remove '-g -G' flag for release version
-// 
-
 #include <stdio.h>
 #include "cuda_runtime.h"
 #include "nccl.h"
 #include "mpi.h"
-#include "ncclEnhance.h"
 #include <unistd.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -73,24 +67,6 @@ __global__ void  init(float *dptr,int myRank)
   dptr[id] = id;
 //   printf("kernel-myRank: %d id: %f\n",myRank,dptr[id]);
 }
-
-// 利用ncclGroupStart(),ncclGroupEnd()实现sendrecv
-ncclResult_t NCCLSendRecv(void *sendbuff, size_t sendcount, ncclDataType_t datatype, int peer,
-                          void *recvbuff,size_t recvcount,ncclComm_t comm, cudaStream_t stream)
-{
-    ncclGroupStart();
-    auto a = ncclSend(sendbuff, sendcount, datatype, peer, comm, stream);
-    auto b = ncclRecv(recvbuff, recvcount, datatype, peer, comm, stream);
-    ncclGroupEnd();
-    if (a||b)
-    {
-      if(a)
-        return a;
-      return b;
-    }
-    return ncclSuccess;
-}
-
 
 int main(int argc, char *argv[]) {
     {
@@ -170,14 +146,14 @@ int main(int argc, char *argv[]) {
     // picking a GPU based on localRank, allocate device buffers
     CUDACHECK(cudaSetDevice(localRank));
     CUDACHECK(cudaMalloc(&sendbuff, size * sizeof(float)));
-    CUDACHECK(cudaMalloc(&recvbuff, nRanks*size * sizeof(float)));
+    CUDACHECK(cudaMalloc(&recvbuff, size * sizeof(float)));
     CUDACHECK(cudaStreamCreate(&s));
 
     // call init kernel to init data
     init<<<1, size>>>(sendbuff,myRank);
 
     // malloc host mem
-    float *hptr = (float *)malloc(nRanks*size * sizeof(float));
+    float *hptr = (float *)malloc(size * sizeof(float));
     cudaMemcpy(hptr,sendbuff,size*sizeof(float),cudaMemcpyDeviceToHost);
     for(int i=0;i<size;++i){
         std::cout<<"myRank-sendbuff: "<<myRank<<" i: "<<i<<" hptr[i]: "<<hptr[i]<<"\n";
@@ -186,26 +162,51 @@ int main(int argc, char *argv[]) {
     // initializing NCCL
     NCCLCHECK(ncclCommInitRank(&comm, nRanks, id, myRank));
 
-
-    NCCLGather(sendbuff,size,ncclFloat,recvbuff,size,ncclFloat,0,comm,s);
-    // 使用新写的函数实现防死锁的send,recive
-    // NCCLSendRecv(sendbuff,size,ncclFloat,(myRank+1)%2,recvbuff,size,comm,s);
-    /* 原始版本
+    // after send and recv ,recvbuff will be have the same value with send buff
+    NCCLCHECK(ncclGroupStart());
+    //================case1: mustbe dead lock=========================
+    // wrong case1, it will make a dead lock if if it is not between ncclGroupStart() and ncclGroupEnd
     if (myRank == 0)
     {
         NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 1, comm, s));
         NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 1, comm, s));
-
     }
     else if (myRank == 1)
     {
-        NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 0, comm, s));
         NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 0, comm, s));
+        NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 0, comm, s));
     }
-    */
 
-    cudaMemcpy(hptr,recvbuff,nRanks*size*sizeof(float),cudaMemcpyDeviceToHost);
-    for(int i=0;i<nRanks*size;++i){
+    //================case2: maybe dead lock=========================
+    // wrong case1, it maybe make a dead lock,but it will work well mostly if thre evolope is not full
+    // if (myRank == 0)
+    // {
+    //     NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 1, comm, s));
+    //     NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 1, comm, s));
+    // }
+    // else if (myRank == 1)
+    // {
+    //     NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 0, comm, s));
+    //     NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 0, comm, s));
+    // }
+
+    //================case3:  good case =========================
+    //
+    // if (myRank == 0)
+    // {
+    //     NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 1, comm, s));
+    //     NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 1, comm, s));
+
+    // }
+    // else if (myRank == 1)
+    // {
+    //     NCCLCHECK(ncclSend(sendbuff, size, ncclFloat, 0, comm, s));
+    //     NCCLCHECK(ncclRecv(recvbuff, size, ncclFloat, 0, comm, s));
+    // }
+    NCCLCHECK(ncclGroupEnd());
+
+    cudaMemcpy(hptr,recvbuff,size*sizeof(float),cudaMemcpyDeviceToHost);
+    for(int i=0;i<size;++i){
         std::cout<<"myRank-recvbuff: "<<myRank<<" i: "<<i<<" hptr[i]: "<<hptr[i]<<"\n";
     }
     // completing NCCL operation by synchronizing on the CUDA stream
@@ -220,7 +221,7 @@ int main(int argc, char *argv[]) {
 
     // finalizing MPI
     MPICHECK(MPI_Finalize());
-    free(hptr);
+
     printf("[MPI Rank %d] Success \n", myRank);
     // cudaDeviceSynchronize();
     return 0;

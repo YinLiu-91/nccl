@@ -1,44 +1,16 @@
 //
 // Multiple Devices per Thread
 // 
-
-// 
-// compile command: nvcc -g -G ./example-3gather.cu -o ex3gather.out -lnccl -lmpi -I../
-// or remove '-g -G' flag for release version
 // 
 
-//
-// execute command: mpirun -np 2 ./ex3gather.out 
-//
-/* output result:
-myRank: 0 localRank: 0
-myRank: 1 localRank: 1
-myRank0 sendbuff[0]
- j: 0 hptr[i][j]: 0
- j: 1 hptr[i][j]: 1
- j: 2 hptr[i][j]: 2
-myRank1 sendbuff[0]
- j: 0 hptr[i][j]: 0
- j: 1 hptr[i][j]: 1
- j: 2 hptr[i][j]: 2
-Root is:0 ncclgather result is :
- j: 0 hptr[i][j]: 0
- j: 1 hptr[i][j]: 1
- j: 2 hptr[i][j]: 2
- j: 3 hptr[i][j]: 0
- j: 4 hptr[i][j]: 1
- j: 5 hptr[i][j]: 2
-[MPI Rank 0] Success 
-[MPI Rank 1] Success
-*/
 #include <stdio.h>
 #include "cuda_runtime.h"
 #include "nccl.h"
 #include "mpi.h"
-#include "ncclEnhance.h"
 #include <unistd.h>
 #include <stdint.h>
 #include <iostream>
+#include "ncclEnhance.h"
 
 #define MPICHECK(cmd) do {                          \
   int e = cmd;                                      \
@@ -94,6 +66,7 @@ __global__ void  init(float *dptr,int myRank)
 {
   int id = threadIdx.x;
   dptr[id] = id;
+//   printf("kernel-myRank: %d id: %f\n",myRank,dptr[id]);
 }
 
 
@@ -101,8 +74,7 @@ int main(int argc, char* argv[])
 {
     //each process is using two GPUs
     int nDev = 1;
-    int root = 0;
-    int size = 3;
+    int size = 6;
 
     int myRank, nRanks, localRank = 0;
 
@@ -123,8 +95,8 @@ int main(int argc, char* argv[])
         break;
       if (hostHashs[p] == hostHashs[myRank])
         localRank++;
-    }
-    std::cout << "myRank: " << myRank << " localRank: " << localRank << "\n";
+  }
+    std::cout<<"myRank: "<<myRank<<" localRank: "<<localRank<<"\n";
 
     float **sendbuff = (float **)malloc(nDev * sizeof(float *));
     float **recvbuff = (float **)malloc(nDev * sizeof(float *));
@@ -136,11 +108,11 @@ int main(int argc, char* argv[])
     {
       CUDACHECK(cudaSetDevice(localRank * nDev + i)); // 给所有设备编号
       CUDACHECK(cudaMalloc(sendbuff + i, size * sizeof(float)));
-      CUDACHECK(cudaMalloc(recvbuff + i, nDev * nRanks * size * sizeof(float)));
-      CUDACHECK(cudaMemset(sendbuff[i], 1, size * sizeof(float)));
+      CUDACHECK(cudaMalloc(recvbuff + i, size * sizeof(float)));
+      CUDACHECK(cudaMemset(sendbuff[i], 0, size * sizeof(float)));
       CUDACHECK(cudaMemset(recvbuff[i], 0, size * sizeof(float)));
       CUDACHECK(cudaStreamCreate(s + i));
-      hptr[i] = (float *)malloc(nDev * nRanks * size * sizeof(float));
+      hptr[i] = (float *)malloc(size * sizeof(float));
   }
 
 
@@ -158,32 +130,31 @@ int main(int argc, char* argv[])
   for (int i = 0; i < nDev; i++)
   {
     CUDACHECK(cudaSetDevice(localRank * nDev + i));
-    init<<<1, size>>>(sendbuff[i], myRank);
+    init<<<1,  size >>>(sendbuff[i], myRank);
     NCCLCHECK(ncclCommInitRank(comms + i, nRanks * nDev, id, myRank * nDev + i));
-    cudaMemcpy(hptr[i],sendbuff[i],size*sizeof(float),cudaMemcpyDeviceToHost);
-    std::cout<<"myRank"<<myRank<<" sendbuff["<<i<<"]"<<"\n";
-    for(int j=0;j<size;++j){
-        std::cout<<" j: "<<j<<" hptr[i][j]: "<<hptr[i][j]<<"\n";
-    }
+    cudaMemcpy(hptr[i], sendbuff[i], size * sizeof(float), cudaMemcpyDeviceToHost);
+      std::cout << "myRank" << myRank << " sendbuff[" << i << "]"
+                << "\n";
+      for (int j = 0; j < size; ++j)
+      {
+        std::cout << " j: " << j << " hptr[i][j]: " << hptr[i][j] << "\n";
+      }
   }
   NCCLCHECK(ncclGroupEnd());
 
 
-  // gather Data
+  // scatter Data
+  int sendsize=size/(nRanks*nDev);
   for(int i=0;i<nDev;++i){
-    NCCLGather(sendbuff[i], size, ncclFloat, recvbuff[i], size, ncclFloat, root, comms[i], s[i]);
+    NCCLAlltoall(sendbuff[i],sendsize,ncclFloat,recvbuff[i],sendsize,ncclFloat,comms[i],s[i]);
   }
 
   for (int i = 0; i < nDev; ++i)
   {
-    if(myRank * nDev + i==root)
-    {
-      cudaMemcpy(hptr[i], recvbuff[i], nDev * nRanks * size * sizeof(float), cudaMemcpyDeviceToHost);
-      std::cout << "Root is:" << root << " ncclgather result is :\n";
-      for (int j = 0; j < nRanks * nDev * size; ++j)
-      {
-        std::cout << " j: " << j << " hptr[i][j]: " << hptr[i][j] << "\n";
-      }
+    cudaMemcpy(hptr[i], recvbuff[i],size * sizeof(float), cudaMemcpyDeviceToHost);
+    std::cout<<"myRank"<<myRank<<" recvbuff["<<i<<"]"<<"\n";
+    for(int j=0;j<size;++j){
+        std::cout<<" j: "<<j<<" hptr[i][j]: "<<hptr[i][j]<<"\n";
     }
   }
 

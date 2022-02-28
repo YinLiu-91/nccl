@@ -2,11 +2,6 @@
 // Example 1: Single Process, Single Thread, Multiple Devices
 //
 
-// 
-// compile command: nvcc -g -G sourceFileName -o binFileName.out -lnccl 
-// or remove '-g -G' flag for release version
-// 
-
 #include <stdio.h>
 #include "cuda_runtime.h"
 #include "nccl.h"

@@ -2,18 +2,12 @@
 // Example 1: Single Process, Single Thread, Multiple Devices
 //
 
-// 
-// compile command: nvcc -g -G sourceFileName -o binFileName.out -lnccl 
-// or remove '-g -G' flag for release version
-// 
-
 #include <stdio.h>
 #include "cuda_runtime.h"
 #include "nccl.h"
 #include <stdlib.h>
 #include <vector>
 #include <iostream>
-
 #define CUDACHECK(cmd) do {                         \
   cudaError_t e = cmd;                              \
   if( e != cudaSuccess ) {                          \
@@ -36,7 +30,7 @@ __global__ void  init1(float *dptr,int i)
 {
   int id = threadIdx.x;
   dptr[id] = id;
-  printf("GPU: %d,dptr: %f\n",i,dptr[id]);
+  // printf("GPU: %d,dptr: %f\n",i,dptr[id]);
 }
 
 int main(int argc, char *argv[]) {
@@ -45,13 +39,8 @@ int main(int argc, char *argv[]) {
 
     // managing 2 devices
     int nDev = 2;
-    const int size = 3;
+    const int size = 2;
 
-    // std::vector<int> devs(nDev);
-    // for (int i = 0; i < nDev; ++i)
-    // {
-    //   devs[i] = i;
-    // }
     int devs[2]={0,1};
 
     // allocating and initializing device buffers
@@ -87,8 +76,8 @@ int main(int argc, char *argv[]) {
     // 详见 https://gitee.com/liuyin-91/ncclexamples/blob/master/documents/nvdia%E5%AE%98%E6%96%B9documentation.md#%E4%BB%8E%E4%B8%80%E4%B8%AA%E7%BA%BF%E7%A8%8B%E7%AE%A1%E7%90%86%E5%A4%9A%E4%B8%AA-gpu 
     NCCLCHECK(ncclGroupStart());
     for (int i = 0; i < nDev; ++i) {
-        NCCLCHECK(ncclAllReduce((const void *) sendbuff[i],
-                                (void *) recvbuff[i], size, ncclFloat, ncclSum,
+        NCCLCHECK(ncclReduceScatter((const void *) sendbuff[i],
+                                (void *) recvbuff[i], 1, ncclFloat, ncclSum,
                                 comms[i], s[i]));
     }
     NCCLCHECK(ncclGroupEnd());
@@ -116,7 +105,7 @@ int main(int argc, char *argv[]) {
 
     for(int i=0;i<size;++i){
       for(int j=0;j<nDev;++j)
-      std::cout<<"i= "<<i<<" "<<hptr[j][i]<<"\n";
+        std::cout << "Device: " << j << " recvbuff[" << i << "]:" << hptr[j][i] << "\n";
     }
     free(hptr);
     printf("Success \n");

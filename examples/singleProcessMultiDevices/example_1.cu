@@ -2,15 +2,9 @@
 // Example 1: Single Process, Single Thread, Multiple Devices
 //
 
-// 
-// compile command: nvcc -g -G sourceFileName -o binFileName.out -lnccl  -I../
-// or remove '-g -G' flag for release version
-// 
-
 #include <stdio.h>
 #include "cuda_runtime.h"
 #include "nccl.h"
-#include "ncclEnhance.h"
 #include <stdlib.h>
 #include <vector>
 #include <iostream>
@@ -48,6 +42,11 @@ int main(int argc, char *argv[]) {
     int nDev = 2;
     const int size = 3;
 
+    // std::vector<int> devs(nDev);
+    // for (int i = 0; i < nDev; ++i)
+    // {
+    //   devs[i] = i;
+    // }
     int devs[2]={0,1};
 
     // allocating and initializing device buffers
@@ -81,27 +80,13 @@ int main(int argc, char *argv[]) {
     // calling NCCL communication API. Group API is required when
     // using multiple devices per thread
     // 详见 https://gitee.com/liuyin-91/ncclexamples/blob/master/documents/nvdia%E5%AE%98%E6%96%B9documentation.md#%E4%BB%8E%E4%B8%80%E4%B8%AA%E7%BA%BF%E7%A8%8B%E7%AE%A1%E7%90%86%E5%A4%9A%E4%B8%AA-gpu 
-    
-    
-    // NCCLCHECK(ncclGroupStart());
-    for (int i = 0; i < nDev; ++i)
-    {
-      CUDACHECK(cudaSetDevice(i));
-      // work fine  
-      // NCCLCHECK(ncclSend(sendbuff[i], size, ncclFloat, (i + 1) % 2, comms[i], s[i]));
-      // NCCLCHECK(ncclRecv(recvbuff[i], size, ncclFloat, (i + 1) % 2, comms[i], s[i]));
-
-      // work fine only if it is between ncclGroupStart() and ncclGroupEnd()
-      // 当ncclRecv,ncclRecv在ncclGroupStart()和ncclGroupEnd()之间时,就像IRecv和ISend一样,
-      // 像下面这样写就不会lock,不然就死锁
-      // NCCLCHECK(ncclRecv(recvbuff[i], size, ncclFloat, (i + 1) % 2, comms[i], s[i]));
-      // NCCLCHECK(ncclSend(sendbuff[i], size, ncclFloat, (i + 1) % 2, comms[i], s[i]));
-
-      // 防止死锁的好方法
-      NCCLSendRecv(sendbuff[i],size,ncclFloat,(i + 1) % 2,recvbuff[i],size,comms[i],s[i]);
-
+    NCCLCHECK(ncclGroupStart());
+    for (int i = 0; i < nDev; ++i) {
+        NCCLCHECK(ncclAllReduce((const void *) sendbuff[i],
+                                (void *) recvbuff[i], size, ncclFloat, ncclSum,
+                                comms[i], s[i]));
     }
-    // NCCLCHECK(ncclGroupEnd());
+    NCCLCHECK(ncclGroupEnd());
 
     // synchronizing on CUDA streams to wait for completion of NCCL operation
     for (int i = 0; i < nDev; ++i) {
@@ -126,7 +111,7 @@ int main(int argc, char *argv[]) {
 
     for(int i=0;i<size;++i){
       for(int j=0;j<nDev;++j)
-      std::cout<<"i= "<<i<<" "<<"hptr["<<i<<"] "<<hptr[j][i]<<"\n";
+      std::cout<<"i= "<<i<<" "<<hptr[j][i]<<"\n";
     }
     free(hptr);
     printf("Success \n");

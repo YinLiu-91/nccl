@@ -1,7 +1,7 @@
 #ifndef _NCCLENHANCE_H
 #define _NCCLENHANCE_H
 #include "nccl.h"
-
+// This function is copied from nccl 
 static __inline__ int ncclTypeSize(ncclDataType_t type) {
   switch (type) {
     case ncclInt8:
@@ -25,12 +25,7 @@ static __inline__ int ncclTypeSize(ncclDataType_t type) {
   }
 }
 
-/*
- * Send-recive
- *
- * re
- *
- */
+
 ncclResult_t NCCLSendRecv(void *sendbuff, size_t sendcount, ncclDataType_t datatype, int peer,
                           void *recvbuff,size_t recvcount,ncclComm_t comm, cudaStream_t stream)
 {
