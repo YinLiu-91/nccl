@@ -3,36 +3,45 @@ CC=nvcc
 CFLAGS+= -g -G -w
 LIBS= -lnccl -lmpi
 
-all: example_2allreduce.out example_2brdcast.out example_2gather.out example_2reduce.out example_2reduceScatter.out \
-example_2sendRecv.out  example_2sendRecvbind.out
+OBJS0= example_2allreduce
+OBJS1= example_2brdcast
+OBJS2= example_2gather
+OBJS3= example_2reduce
+OBJS4= example_2reduceScatter
+OBJS5= example_2sendRecv
+OBJS6= example_2sendRecvbind
 
-OBJS=example_2allreduce
-${OBJS}.out: ${OBJS}.cu
+all: ${OBJS0}.out ${OBJS1}.out ${OBJS2}.out ${OBJS3}.out ${OBJS4}.out ${OBJS5}.out ${OBJS6}.out 
+
+${OBJS0}.out: ${OBJS0}.cu
 	${CC} ${CFLAGS} $^ -o $@ ${LIBS}
 
-OBJS=example_2brdcast
-${OBJS}.out: ${OBJS}.cu
+${OBJS1}.out: ${OBJS1}.cu
 	${CC} ${CFLAGS} $^ -o $@ ${LIBS} -I../
 
-OBJS=example_2gather
-${OBJS}.out: ${OBJS}.cu
+${OBJS2}.out: ${OBJS2}.cu
 	${CC} ${CFLAGS} $^ -o $@ ${LIBS} -I../
 
-OBJS= example_2reduce
-${OBJS}.out: ${OBJS}.cu
+${OBJS3}.out: ${OBJS3}.cu
 	${CC} ${CFLAGS} $^ -o $@ ${LIBS} -I../
 
-OBJS= example_2reduceScatter
-${OBJS}.out: ${OBJS}.cu
+${OBJS4}.out: ${OBJS4}.cu
 	${CC} ${CFLAGS} $^ -o $@ ${LIBS} -I../
 
-OBJS= example_2sendRecv
-${OBJS}.out: ${OBJS}.cu
+${OBJS5}.out: ${OBJS5}.cu
 	${CC} ${CFLAGS} $^ -o $@ ${LIBS} -I../
 
-OBJS= example_2sendRecvbind
-${OBJS}.out: ${OBJS}.cu
+${OBJS6}.out: ${OBJS6}.cu
 	${CC} ${CFLAGS} $^ -o $@ ${LIBS} -I../
 
 clean: 
 	${RM} *.out -r
+
+test:
+	mpirun -np 2 ${OBJS0}.out 1
+	mpirun -np 2 ${OBJS1}.out 
+	mpirun -np 2 ${OBJS2}.out 
+	mpirun -np 2 ${OBJS3}.out
+	mpirun -np 2 ${OBJS4}.out 
+	mpirun -np 2 ${OBJS5}.out 
+	mpirun -np 2 ${OBJS6}.out 

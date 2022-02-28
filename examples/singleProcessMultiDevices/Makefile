@@ -3,23 +3,30 @@ CC=nvcc
 CFLAGS+= -g -G -w
 LIBS= -lnccl -lmpi
 
-all: example_1.out example_1reduceScatter.out example_1sendRecv.out example_1sendRecvbind.out 
+OBJS0=example_1
+OBJS1=example_1reduceScatter
+OBJS2=example_1sendRecv
+OBJS3=example_1sendRecvbind
 
-OBJS=example_1
-${OBJS}.out: ${OBJS}.cu
+all: ${OBJS0}.out ${OBJS1}.out ${OBJS2}.out ${OBJS3}.out 
+
+${OBJS0}.out: ${OBJS0}.cu
 	${CC} ${CFLAGS} $^ -o $@ ${LIBS}
 
-OBJS=example_1reduceScatter
-${OBJS}.out: ${OBJS}.cu
+${OBJS1}.out: ${OBJS1}.cu
 	${CC} ${CFLAGS} $^ -o $@ ${LIBS} -I../
 
-OBJS=example_1sendRecv
-${OBJS}.out: ${OBJS}.cu
+${OBJS2}.out: ${OBJS2}.cu
 	${CC} ${CFLAGS} $^ -o $@ ${LIBS} -I../
 
-OBJS= example_1sendRecvbind
-${OBJS}.out: ${OBJS}.cu
+${OBJS3}.out: ${OBJS3}.cu
 	${CC} ${CFLAGS} $^ -o $@ ${LIBS} -I../
 
 clean: 
 	${RM} *.out -r
+
+test:
+	./${OBJS0}.out 
+	./${OBJS1}.out 
+	./${OBJS2}.out 
+	./${OBJS3}.out 

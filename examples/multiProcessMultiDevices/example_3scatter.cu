@@ -109,6 +109,10 @@ int main(int argc, char* argv[])
     MPICHECK(MPI_Comm_rank(MPI_COMM_WORLD, &myRank));
     MPICHECK(MPI_Comm_size(MPI_COMM_WORLD, &nRanks));
 
+    if (myRank == 0)
+    {
+      std::cout << "\n\n\nExecuting " << argv[0] << " now!\n";
+    }
     //calculating localRank which is used in selecting a GPU
     uint64_t hostHashs[nRanks];
     char hostname[1024];

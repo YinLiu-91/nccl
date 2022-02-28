@@ -36,36 +36,37 @@ __global__ void  init1(float *dptr,int i)
 }
 
 int main(int argc, char *argv[]) {
+  std::cout << "\n\n\nExecuting " << argv[0] << " now!\n";
+  ncclComm_t comms[2];
 
-    ncclComm_t comms[2];
+  // managing 2 devices
+  int nDev = 2;
+  const int size = 3;
 
-    // managing 2 devices
-    int nDev = 2;
-    const int size = 3;
+  int devs[2] = {0, 1};
 
-    int devs[2]={0,1};
+  // allocating and initializing device buffers
+  float **sendbuff = (float **)malloc(nDev * sizeof(float *));
+  float **recvbuff = (float **)malloc(nDev * sizeof(float *));
+  float **hptr = (float **)malloc(nDev * sizeof(float *));
+  // create nDev streams for ndev devices
+  cudaStream_t *s = (cudaStream_t *)malloc(sizeof(cudaStream_t) * nDev);
 
-    // allocating and initializing device buffers
-    float **sendbuff = (float **) malloc(nDev * sizeof(float *));
-    float **recvbuff = (float **) malloc(nDev * sizeof(float *));
-    float **hptr = (float **) malloc(nDev * sizeof(float *));
-    // create nDev streams for ndev devices
-    cudaStream_t *s = (cudaStream_t *) malloc(sizeof(cudaStream_t) * nDev);
-    
-    for (int i = 0; i < nDev; ++i) {
-        CUDACHECK(cudaSetDevice(i));
-        {
-          // Device info 
-          cudaDeviceProp deviceProp;
-          cudaGetDeviceProperties(&deviceProp, i);
-          printf("\nDevice %d: \"%s\"%d,%d\n", i, deviceProp.name, deviceProp.major, deviceProp.minor);
-        }
-        CUDACHECK(cudaMalloc(sendbuff + i, size * sizeof(float)));
-        CUDACHECK(cudaMalloc(recvbuff + i, size * sizeof(float)));
-        CUDACHECK(cudaMemset(sendbuff[i], 1, size * sizeof(float)));
-        CUDACHECK(cudaMemset(recvbuff[i], 0, size * sizeof(float)));
-        CUDACHECK(cudaStreamCreate(s + i));
-        init1<<<1,size>>>(sendbuff[i],i);
+  for (int i = 0; i < nDev; ++i)
+  {
+    CUDACHECK(cudaSetDevice(i));
+    {
+      // Device info
+      cudaDeviceProp deviceProp;
+      cudaGetDeviceProperties(&deviceProp, i);
+      printf("\nDevice %d: \"%s\"%d,%d\n", i, deviceProp.name, deviceProp.major, deviceProp.minor);
+    }
+    CUDACHECK(cudaMalloc(sendbuff + i, size * sizeof(float)));
+    CUDACHECK(cudaMalloc(recvbuff + i, size * sizeof(float)));
+    CUDACHECK(cudaMemset(sendbuff[i], 1, size * sizeof(float)));
+    CUDACHECK(cudaMemset(recvbuff[i], 0, size * sizeof(float)));
+    CUDACHECK(cudaStreamCreate(s + i));
+    init1<<<1, size>>>(sendbuff[i], i);
     }
 
     // 见https://gitee.com/liuyin-91/ncclexamples/blob/master/documents/nvdia%E5%AE%98%E6%96%B9documentation.md 创建一个Communicator 章节
