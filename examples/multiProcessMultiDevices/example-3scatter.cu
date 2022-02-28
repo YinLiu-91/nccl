@@ -2,7 +2,7 @@
 // Multiple Devices per Thread
 // 
 // 
-// compile command: nvcc -g -G ./example-3scatter.cu -o ex3scatter.out -lnccl -lmpi  
+// compile command: nvcc -g -G sourceFileName -o binFileName.out -lnccl -lmpi  -I../
 //  or remove '-g -G' flag for release version
 // 
 

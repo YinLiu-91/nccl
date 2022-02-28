@@ -1,6 +1,12 @@
 //
 // Multiple Devices per Thread
 // 
+
+// 
+// compile command: nvcc -g -G sourceFileName -o binFileName.out -lnccl -lmpi  
+// or remove '-g -G' flag for release version
+// 
+
 #include <stdio.h>
 #include "cuda_runtime.h"
 #include "nccl.h"

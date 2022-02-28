@@ -3,7 +3,7 @@
 // 
 
 // 
-// compile command: nvcc -g -G ./example-3gather.cu -o ex3gather.out -lnccl -lmpi
+// compile command: nvcc -g -G ./example-3gather.cu -o ex3gather.out -lnccl -lmpi -I../
 // or remove '-g -G' flag for release version
 // 
 
