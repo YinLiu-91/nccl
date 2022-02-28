@@ -6,7 +6,8 @@
                 "/usr/local/cuda/include",
                 "/usr/include/c++/9",
                 "/home/liu/documents/work/cuda/nccl/build/include",
-                "/usr/include"
+                "/usr/include",
+                "${workspaceFolder}/**"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

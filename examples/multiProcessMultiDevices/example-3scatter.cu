@@ -36,6 +36,7 @@ myRank0 recvbuff[0]
 #include "cuda_runtime.h"
 #include "nccl.h"
 #include "mpi.h"
+#include "ncclEnhance.h"
 #include <unistd.h>
 #include <stdint.h>
 #include <iostream>
@@ -97,48 +98,6 @@ __global__ void  init(float *dptr,int myRank)
 //   printf("kernel-myRank: %d id: %f\n",myRank,dptr[id]);
 }
 
-static __inline__ int ncclTypeSize(ncclDataType_t type) {
-  switch (type) {
-    case ncclInt8:
-    case ncclUint8:
-      return 1;
-    case ncclFloat16:
-#if defined(__CUDA_BF16_TYPES_EXIST__)
-    case ncclBfloat16:
-#endif
-      return 2;
-    case ncclInt32:
-    case ncclUint32:
-    case ncclFloat32:
-      return 4;
-    case ncclInt64:
-    case ncclUint64:
-    case ncclFloat64:
-      return 8;
-    default:
-      return -1;
-  }
-}
-
-ncclResult_t NCCLScather(void *sendbuff, size_t sendcount, ncclDataType_t senddatatype, void *recvbuff,
-                         size_t recvcount, ncclDataType_t recvdatatype, int root, int myRank, int nRanks, ncclComm_t comm, cudaStream_t stream)
-{
-  ncclGroupStart();
-  if (myRank == root)
-  {
-    for (int i = 0; i < nRanks; ++i)
-    {
-      auto a = ncclSend(sendbuff + i * ncclTypeSize(senddatatype) * sendcount, sendcount, recvdatatype, i, comm, stream);
-      if (a)
-        return a;
-    }
-  }
-  auto b = ncclRecv(recvbuff, recvcount, recvdatatype, root, comm, stream);
-  if (b)
-    return b;
-  ncclGroupEnd();
-  return ncclSuccess;
-}
 
 int main(int argc, char* argv[])
 {

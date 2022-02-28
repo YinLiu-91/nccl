@@ -6,6 +6,7 @@
 #include "cuda_runtime.h"
 #include "nccl.h"
 #include "mpi.h"
+#include "ncclEnhance.h"
 #include <unistd.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -66,23 +67,6 @@ __global__ void  init(float *dptr,int myRank)
   int id = threadIdx.x;
   dptr[id] = id;
 //   printf("kernel-myRank: %d id: %f\n",myRank,dptr[id]);
-}
-
-// 利用ncclGroupStart(),ncclGroupEnd()实现sendrecv
-ncclResult_t NCCLSendRecv(void *sendbuff, size_t sendcount, ncclDataType_t datatype, int peer,
-                          void *recvbuff,size_t recvcount,ncclComm_t comm, cudaStream_t stream)
-{
-    ncclGroupStart();
-    auto a = ncclSend(sendbuff, sendcount, datatype, peer, comm, stream);
-    auto b = ncclRecv(recvbuff, recvcount, datatype, peer, comm, stream);
-    ncclGroupEnd();
-    if (a||b)
-    {
-      if(a)
-        return a;
-      return b;
-    }
-    return ncclSuccess;
 }
 
 int main(int argc, char *argv[]) {
