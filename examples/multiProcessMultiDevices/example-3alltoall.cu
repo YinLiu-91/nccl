@@ -120,25 +120,16 @@ ncclResult_t NCCLSendRecv(void *sendbuff, size_t sendcount, ncclDataType_t datat
 
 
 ncclResult_t NCCLAlltoall(void *sendbuff, size_t sendcount, ncclDataType_t senddatatype, void *recvbuff,
-                         size_t recvcount, ncclDataType_t recvdatatype, int myRank, int nRanks, ncclComm_t comm, cudaStream_t stream)
+                         size_t recvcount, ncclDataType_t recvdatatype, int nRanks, ncclComm_t comm, cudaStream_t stream)
 {
-
   ncclGroupStart();
   for (int i = 0; i < nRanks; ++i)
   {
-
-    // auto a = ncclSend(sendbuff + i * ncclTypeSize(senddatatype) * sendcount, sendcount, recvdatatype, i, comm, stream);
-    auto a=NCCLSendRecv(sendbuff + i * ncclTypeSize(senddatatype) * sendcount,sendcount,senddatatype,i,recvbuff+ i * ncclTypeSize(recvdatatype) * recvcount,
-      recvcount,comm,stream);
+    auto a = NCCLSendRecv(sendbuff + i * ncclTypeSize(senddatatype) * sendcount, sendcount, senddatatype, i, recvbuff + i * ncclTypeSize(recvdatatype) * recvcount,
+                          recvcount, comm, stream);
     if (a)
       return a;
   }
-  // for (int i = 0; i < nRanks; ++i)
-  // {
-  //   auto b = ncclRecv(recvbuff+ i * ncclTypeSize(recvdatatype) * recvcount, recvcount, recvdatatype, i,comm, stream);
-  //   if (b)
-  //     return b;
-  // }
   ncclGroupEnd();
   return ncclSuccess;
 }
@@ -147,8 +138,7 @@ int main(int argc, char* argv[])
 {
     //each process is using two GPUs
     int nDev = 1;
-    int size = 3;
-    int root = 0;
+    int size = 6;
 
     int myRank, nRanks, localRank = 0;
 
@@ -181,12 +171,12 @@ int main(int argc, char* argv[])
     for (int i = 0; i < nDev; ++i)
     {
       CUDACHECK(cudaSetDevice(localRank * nDev + i)); // 给所有设备编号
-      CUDACHECK(cudaMalloc(sendbuff + i, nDev * nRanks * size * sizeof(float)));
+      CUDACHECK(cudaMalloc(sendbuff + i, size * sizeof(float)));
       CUDACHECK(cudaMalloc(recvbuff + i, size * sizeof(float)));
-      CUDACHECK(cudaMemset(sendbuff[i], 1, size * sizeof(float)));
+      CUDACHECK(cudaMemset(sendbuff[i], 0, size * sizeof(float)));
       CUDACHECK(cudaMemset(recvbuff[i], 0, size * sizeof(float)));
       CUDACHECK(cudaStreamCreate(s + i));
-      hptr[i] = (float *)malloc(nDev * nRanks * size * sizeof(float));
+      hptr[i] = (float *)malloc(size * sizeof(float));
   }
 
 
@@ -204,25 +194,23 @@ int main(int argc, char* argv[])
   for (int i = 0; i < nDev; i++)
   {
     CUDACHECK(cudaSetDevice(localRank * nDev + i));
-    init<<<1,  nDev * nRanks * size >>>(sendbuff[i], myRank);
+    init<<<1,  size >>>(sendbuff[i], myRank);
     NCCLCHECK(ncclCommInitRank(comms + i, nRanks * nDev, id, myRank * nDev + i));
-    cudaMemcpy(hptr[i], sendbuff[i], nDev * nRanks * size * sizeof(float), cudaMemcpyDeviceToHost);
-    if (myRank * nDev + i == root)
-    {
+    cudaMemcpy(hptr[i], sendbuff[i], size * sizeof(float), cudaMemcpyDeviceToHost);
       std::cout << "myRank" << myRank << " sendbuff[" << i << "]"
                 << "\n";
-      for (int j = 0; j < nDev * nRanks * size; ++j)
+      for (int j = 0; j < size; ++j)
       {
         std::cout << " j: " << j << " hptr[i][j]: " << hptr[i][j] << "\n";
       }
-    }
   }
   NCCLCHECK(ncclGroupEnd());
 
 
   // scatter Data
+  int sendsize=size/(nRanks*nDev);
   for(int i=0;i<nDev;++i){
-    NCCLScather(sendbuff[i], size, ncclFloat, recvbuff[i], size, ncclFloat, root, myRank * nDev + i, nRanks * nDev, comms[i], s[i]);
+    NCCLAlltoall(sendbuff[i],sendsize,ncclFloat,recvbuff[i],sendsize,ncclFloat,nRanks*nDev,comms[i],s[i]);
   }
 
   for (int i = 0; i < nDev; ++i)

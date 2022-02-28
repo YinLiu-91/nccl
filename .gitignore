@@ -3,3 +3,4 @@
 *.gcov
 /coverage/
 *.out
+*.log
