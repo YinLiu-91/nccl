@@ -71,8 +71,6 @@ int main(int argc, char *argv[]) {
     init1<<<1, size>>>(sendbuff[i], i);
     }
 
-    // 见https://gitee.com/liuyin-91/ncclexamples/blob/master/documents/nvdia%E5%AE%98%E6%96%B9documentation.md 创建一个Communicator 章节
-    // initializing NCCL
     NCCLCHECK(ncclCommInitAll(comms, nDev, devs));
 
 
@@ -90,12 +88,10 @@ int main(int argc, char *argv[]) {
       // NCCLCHECK(ncclRecv(recvbuff[i], size, ncclFloat, (i + 1) % 2, comms[i], s[i]));
 
       // work fine only if it is between ncclGroupStart() and ncclGroupEnd()
-      // 当ncclRecv,ncclRecv在ncclGroupStart()和ncclGroupEnd()之间时,就像IRecv和ISend一样,
-      // 像下面这样写就不会lock,不然就死锁
       // NCCLCHECK(ncclRecv(recvbuff[i], size, ncclFloat, (i + 1) % 2, comms[i], s[i]));
       // NCCLCHECK(ncclSend(sendbuff[i], size, ncclFloat, (i + 1) % 2, comms[i], s[i]));
 
-      // 防止死锁的好方法
+      // 
       NCCLSendRecv(sendbuff[i],size,ncclFloat,(i + 1) % 2,recvbuff[i],size,comms[i],s[i]);
 
     }

@@ -76,13 +76,10 @@ int main(int argc, char *argv[])
     init1<<<1, size>>>(sendbuff[i], i);
   }
 
-  // 见https://gitee.com/liuyin-91/ncclexamples/blob/master/documents/nvdia%E5%AE%98%E6%96%B9documentation.md 创建一个Communicator 章节
-  // initializing NCCL
   NCCLCHECK(ncclCommInitAll(comms, nDev, devs));
 
   // calling NCCL communication API. Group API is required when
   // using multiple devices per thread
-  // 详见 https://gitee.com/liuyin-91/ncclexamples/blob/master/documents/nvdia%E5%AE%98%E6%96%B9documentation.md#%E4%BB%8E%E4%B8%80%E4%B8%AA%E7%BA%BF%E7%A8%8B%E7%AE%A1%E7%90%86%E5%A4%9A%E4%B8%AA-gpu
   NCCLCHECK(ncclGroupStart());
   for (int i = 0; i < nDev; ++i)
   {
