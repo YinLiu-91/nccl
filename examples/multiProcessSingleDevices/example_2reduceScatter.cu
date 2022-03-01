@@ -140,9 +140,6 @@ int main(int argc, char *argv[]) {
     float *sendbuff, *recvbuff;
     cudaStream_t s;
 
-    // get NCCL unique ID at rank 0 and broadcast it to all others
-    // 见https://gitee.com/liuyin-91/ncclexamples/blob/master/documents/nvdia%E5%AE%98%E6%96%B9documentation.md 创建一个Communicator 章节
-    // 
     if (myRank == 0) {
         ncclGetUniqueId(&id);
     }
