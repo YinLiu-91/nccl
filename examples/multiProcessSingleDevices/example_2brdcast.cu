@@ -71,7 +71,6 @@ __global__ void  init(float *dptr,int myRank)
 
 int main(int argc, char *argv[]) {
     {
-        int i = 0;
         char host[256];
 #ifdef __linux
         printf("PID %d on node %s is ready for attach\n",
@@ -87,7 +86,7 @@ int main(int argc, char *argv[]) {
                 int i = 0;
                 while (i == 0)
                 {
-                    int j = 3;
+                    i = 0;
                 }
             }
         }
@@ -99,6 +98,12 @@ int main(int argc, char *argv[]) {
     MPICHECK(MPI_Init(&argc, &argv));
     MPICHECK(MPI_Comm_rank(MPI_COMM_WORLD, &myRank));
     MPICHECK(MPI_Comm_size(MPI_COMM_WORLD, &nRanks));
+    if (myRank == 0)
+    {
+        std::cout << "================================================================"
+                  << "\n    Executing " << argv[0] << " now!\n"
+                  << "================================================================\n";
+    }
     std::cout<<"Rank: "<<myRank<<"\n";
     {
         int deviceCount = 0;
@@ -154,6 +159,7 @@ int main(int argc, char *argv[]) {
 
     // malloc host mem
     float *hptr = (float *)malloc(size * sizeof(float));
+    cudaMemcpy(hptr,sendbuff,size*sizeof(float),cudaMemcpyDeviceToHost);
     std::cout << "sendbuff-before-brdcast:\n";
     for (int i = 0; i < size; ++i)
     {

@@ -85,7 +85,9 @@ int main(int argc, char* argv[])
 
     if (myRank == 0)
     {
-      std::cout << "\n\n\nExecuting " << argv[0] << " now!\n";
+        std::cout << "================================================================"
+                  << "\n    Executing " << argv[0] << " now!\n"
+                  << "================================================================\n";
     }
 
     //calculating localRank which is used in selecting a GPU

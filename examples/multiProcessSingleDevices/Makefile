@@ -37,10 +37,10 @@ clean:
 	${RM} *.out -r
 
 test:
-	mpirun -np 2 ${OBJS0}.out 1
-	mpirun -np 2 ${OBJS1}.out 
-	mpirun -np 2 ${OBJS2}.out 
-	mpirun -np 2 ${OBJS3}.out
-	mpirun -np 2 ${OBJS4}.out 
-	mpirun -np 2 ${OBJS5}.out 
-	mpirun -np 2 ${OBJS6}.out 
+	mpirun -np 2 ${OBJS0}.out 1 
+	mpirun -np 2 ${OBJS1}.out 1
+	mpirun -np 2 ${OBJS2}.out 1
+	mpirun -np 2 ${OBJS3}.out 1
+	mpirun -np 2 ${OBJS4}.out 1
+	mpirun -np 2 ${OBJS5}.out 1
+	mpirun -np 2 ${OBJS6}.out 1

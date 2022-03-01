@@ -35,7 +35,9 @@ __global__ void  init1(float *dptr,int i)
 
 int main(int argc, char *argv[])
 {
-  std::cout << "\n\n\nExecuting " << argv[0] << " now!\n";
+  std::cout << "================================================================"<<
+               "\n    Executing " << argv[0] << " now!\n"<<
+               "================================================================\n";
 
   ncclComm_t comms[2];
 
