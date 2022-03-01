@@ -7,3 +7,6 @@
 [submodule "multi-gpu-programming-models"]
 	path = multi-gpu-programming-models
 	url = https://github.com/YinLiu-91/multi-gpu-programming-models.git
+[submodule "ncclOperationPlus"]
+	path = ncclOperationPlus
+	url = https://github.com/YinLiu-91/ncclOperationPlus.git
