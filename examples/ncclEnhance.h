@@ -1,6 +1,7 @@
 #ifndef _NCCLENHANCE_H
 #define _NCCLENHANCE_H
 #include "nccl.h"
+#include<cstddef>
 // This function is copied from nccl 
 static __inline__ int ncclTypeSize(ncclDataType_t type) {
   switch (type) {
@@ -51,8 +52,8 @@ ncclResult_t NCCLAlltoall(void *sendbuff, size_t sendcount, ncclDataType_t sendd
     ncclCommCount(comm, &nRanks);
     for (int i = 0; i < nRanks; ++i)
     {
-        auto a = NCCLSendRecv(sendbuff + i * ncclTypeSize(senddatatype) * sendcount, sendcount, senddatatype, i, 
-                    recvbuff + i * ncclTypeSize(recvdatatype) * recvcount, recvcount, comm, stream);
+        auto a = NCCLSendRecv(static_cast<std::byte*>(sendbuff) + i * ncclTypeSize(senddatatype) * sendcount, sendcount, senddatatype, i, 
+                    static_cast<std::byte*>(recvbuff) + i * ncclTypeSize(recvdatatype) * recvcount, recvcount, comm, stream);
         if (a)
             return a;
     }
@@ -75,7 +76,7 @@ ncclResult_t NCCLGather(void *sendbuff, size_t sendcount, ncclDataType_t senddat
     }
     if(myRank==root){
         for(int i=0;i<nRanks;++i){
-           auto b=ncclRecv(recvbuff+i*ncclTypeSize(recvdatatype)*recvcount,recvcount,recvdatatype,i,comm,stream);
+           auto b=ncclRecv( static_cast<std::byte*>(recvbuff)+i*ncclTypeSize(recvdatatype)*recvcount,recvcount,recvdatatype,i,comm,stream);
            if(b){
                return b;
            }
@@ -98,7 +99,7 @@ ncclResult_t NCCLScatter(void *sendbuff, size_t sendcount, ncclDataType_t sendda
     {
         for (int i = 0; i < nRanks; ++i)
         {
-            auto a = ncclSend(sendbuff + i * ncclTypeSize(senddatatype) * sendcount, sendcount, recvdatatype, i, comm, stream);
+            auto a = ncclSend(static_cast<std::byte*>(sendbuff) + i * ncclTypeSize(senddatatype) * sendcount, sendcount, recvdatatype, i, comm, stream);
             if (a)
                 return a;
         }

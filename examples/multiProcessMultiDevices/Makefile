@@ -1,6 +1,5 @@
 CC=nvcc 
-# use 'w' to ignore 'warning: pointer of type ‘void *’ used in arithmetic [-Wpointer-arith]'
-CFLAGS+= -g -G -w
+CFLAGS+= -g -G -std=c++17 
 LIBS= -lnccl -lmpi
 
 OBJS0= example_3
