@@ -8,7 +8,7 @@ CUDA_HOME ?= /usr/local/cuda
 PREFIX ?= /usr/local
 VERBOSE ?= 0
 KEEP ?= 0
-DEBUG ?= 0
+DEBUG ?= 1
 TRACE ?= 0
 PROFAPI ?= 0
 NVTX ?= 1
@@ -51,11 +51,11 @@ endif
 CXXFLAGS   := -DCUDA_MAJOR=$(CUDA_MAJOR) -DCUDA_MINOR=$(CUDA_MINOR) -fPIC -fvisibility=hidden \
               -Wall -Wno-unused-function -Wno-sign-compare -std=c++11 -Wvla  \
               -I $(CUDA_INC) \
-              $(CXXFLAGS)
+              $(CXXFLAGS) 
 # Maxrregcount needs to be set accordingly to NCCL_MAX_NTHREADS (otherwise it will cause kernel launch errors)
 # 512 : 120, 640 : 96, 768 : 80, 1024 : 60
 # We would not have to set this if we used __launch_bounds__, but this only works on kernels, not on functions.
-NVCUFLAGS  := -ccbin $(CXX) $(NVCC_GENCODE) -std=c++11 --expt-extended-lambda -Xptxas -maxrregcount=96 -Xfatbin -compress-all -Wno-deprecated-gpu-targets  -lineinfo
+NVCUFLAGS  := -ccbin $(CXX) $(NVCC_GENCODE) -std=c++11 --expt-extended-lambda -Xptxas -maxrregcount=96 -Xfatbin -compress-all -Wno-deprecated-gpu-targets  #-lineinfo
 # Use addprefix so that we can specify more than one path
 NVLDFLAGS  := -L${CUDA_LIB} -lcudart -lrt 
 
@@ -73,6 +73,7 @@ ifeq ($(DEBUG), 0)
 NVCUFLAGS += -O3
 CXXFLAGS  += -O3 -g
 else
+# @ echo "Debug"
 NVCUFLAGS += -O0 -G -g
 CXXFLAGS  += -O0 -g -ggdb3
 endif

@@ -30,7 +30,7 @@
             "gdb":"cuda-gdb",
             // "program": "${workspaceFolder}/build/examples/examples_cuda/issue179",
             // "program": "${workspaceFolder}/build/examples/examples_cuda/issue179",
-            "program": "${workspaceFolder}/examples/ex1.out",
+            "program": "${workspaceFolder}/ncclOperationPlus/singleProcessMultiDevices/example_1.out",
             "arguments": ""
         }
     ]

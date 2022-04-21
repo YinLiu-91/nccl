@@ -7,7 +7,7 @@
 
 default : src.build
 install : src.install
-BUILDDIR ?= $(abspath ./build)
+BUILDDIR ?= $(abspath ./build/dbg)
 ABSBUILDDIR := $(abspath $(BUILDDIR))
 TARGETS := src pkg
 clean: ${TARGETS:%=%.clean}
