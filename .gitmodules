@@ -10,3 +10,6 @@
 [submodule "ncclOperationPlus"]
 	path = ncclOperationPlus
 	url = https://github.com/YinLiu-91/ncclOperationPlus.git
+[submodule "nccl-1.2.3"]
+	path = nccl-1.2.3
+	url = https://gitee.com/liuyin-91/nccl-1.2.3.git
